@@ -123,7 +123,7 @@ class Ui_qMainWindow_obsPyck(object):
         sizePolicy.setHeightForWidth(self.qComboBox_nllocModel.sizePolicy().hasHeightForWidth())
         self.qComboBox_nllocModel.setSizePolicy(sizePolicy)
         font = QtGui.QFont()
-        font.setFamily("Monospace")
+        font.setFamily("Helvetica")
         font.setBold(False)
         font.setItalic(False)
         font.setWeight(50)
@@ -453,7 +453,7 @@ class Ui_qMainWindow_obsPyck(object):
         sizePolicy.setHeightForWidth(self.qLabel_streamNumber.sizePolicy().hasHeightForWidth())
         self.qLabel_streamNumber.setSizePolicy(sizePolicy)
         font = QtGui.QFont()
-        font.setFamily("Monospace")
+        font.setFamily("Helvetica")
         self.qLabel_streamNumber.setFont(font)
         self.qLabel_streamNumber.setStyleSheet("")
         self.qLabel_streamNumber.setAlignment(QtCore.Qt.AlignCenter)
@@ -477,7 +477,7 @@ class Ui_qMainWindow_obsPyck(object):
         sizePolicy.setHeightForWidth(self.qComboBox_streamName.sizePolicy().hasHeightForWidth())
         self.qComboBox_streamName.setSizePolicy(sizePolicy)
         font = QtGui.QFont()
-        font.setFamily("Monospace")
+        font.setFamily("Helvetica")
         self.qComboBox_streamName.setFont(font)
         self.qComboBox_streamName.setFocusPolicy(QtCore.Qt.NoFocus)
         self.qComboBox_streamName.setStyleSheet("")
@@ -771,7 +771,7 @@ class Ui_qMainWindow_obsPyck(object):
         self.qTextEdit_qml.setSizePolicy(sizePolicy)
         self.qTextEdit_qml.setMaximumSize(QtCore.QSize(16777215, 16777215))
         font = QtGui.QFont()
-        font.setFamily("Monospace")
+        font.setFamily("Helvetica")
         font.setPointSize(10)
         self.qTextEdit_qml.setFont(font)
         self.qTextEdit_qml.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -797,7 +797,7 @@ class Ui_qMainWindow_obsPyck(object):
         self.qPlainTextEdit_stdout.setSizePolicy(sizePolicy)
         self.qPlainTextEdit_stdout.setMinimumSize(QtCore.QSize(0, 50))
         font = QtGui.QFont()
-        font.setFamily("Monospace")
+        font.setFamily("Helvetica")
         font.setPointSize(10)
         self.qPlainTextEdit_stdout.setFont(font)
         self.qPlainTextEdit_stdout.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -815,7 +815,7 @@ class Ui_qMainWindow_obsPyck(object):
         self.qPlainTextEdit_stderr.setSizePolicy(sizePolicy)
         self.qPlainTextEdit_stderr.setMinimumSize(QtCore.QSize(0, 50))
         font = QtGui.QFont()
-        font.setFamily("Monospace")
+        font.setFamily("Helvetica")
         font.setPointSize(10)
         self.qPlainTextEdit_stderr.setFont(font)
         self.qPlainTextEdit_stderr.setFocusPolicy(QtCore.Qt.NoFocus)
@@ -926,7 +926,7 @@ class Ui_qMainWindow_obsPyck(object):
         self.qLabel_streamNumber.setText(_translate("qMainWindow_obsPyck", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
 "<  html><head><meta name=\"qrichtext\" content=\"1\" /><style type=\"text/css\">\n"
 "p, l  i { white-space: pre-wrap; }\n"
-"<  /style></head><body style=\" font-family:\'Monospace\'; font-size:10pt; font-weight:400; font-style:normal;\">\n"
+"<  /style></head><body style=\" font-family:\'Helvetica\'; font-size:10pt; font-weight:400; font-style:normal;\">\n"
 "<  p align=\"center\" style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">00/00</p></body></html>"))
         self.qToolButton_nextStream.setText(_translate("qMainWindow_obsPyck", ">"))
         self.qToolButton_overview.setText(_translate("qMainWindow_obsPyck", "Overview"))
