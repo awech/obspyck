@@ -110,8 +110,8 @@ COMMANDLINE_OPTIONS = (
         )
 PROGRAMS = {
         'nlloc': {'filenames': {'exe': "NLLoc", 'phases': "nlloc.obs",
-                                'summary': "nlloc.hyp",
-                                'scatter': "nlloc.scat"}},
+                                'summary': "last.hyp",
+                                'scatter': "last.scat"}},
         'hyp_2000': {'filenames': {'exe': "hyp2000",'control': "bay2000.inp",
                                    'phases': "hyp2000.pha",
                                    'stations': "stations.dat",
@@ -898,37 +898,65 @@ class MultiCursor(MplMultiCursor):
             self.vlines = value
 
 
-def gk2lonlat(x, y, m_to_km=True):
-    """
-    This function converts X/Y Gauss-Krueger coordinates (zone 4, central
-    meridian 12 deg) to Longitude/Latitude in WGS84 reference ellipsoid.
-    We do this using pyproj (python bindings for proj4) which can be installed
-    using 'easy_install pyproj' from pypi.python.org.
-    Input can be single coordinates or coordinate lists/arrays.
+# def gk2lonlat(x, y, m_to_km=True):
+#     """
+#     This function converts X/Y Gauss-Krueger coordinates (zone 4, central
+#     meridian 12 deg) to Longitude/Latitude in WGS84 reference ellipsoid.
+#     We do this using pyproj (python bindings for proj4) which can be installed
+#     using 'easy_install pyproj' from pypi.python.org.
+#     Input can be single coordinates or coordinate lists/arrays.
     
-    Useful Links:
-    http://pyproj.googlecode.com/svn/trunk/README.html
-    http://trac.osgeo.org/proj/
-    http://www.epsg-registry.org/
+#     Useful Links:
+#     http://pyproj.googlecode.com/svn/trunk/README.html
+#     http://trac.osgeo.org/proj/
+#     http://www.epsg-registry.org/
+#     """
+#     import pyproj
+
+#     # convert to meters first
+#     if m_to_km:
+#         x = x * 1000.
+#         y = y * 1000.
+#     # pyproj has deprecated the old 'init="epsg:4326"' syntax
+#     try:
+#         transformer = pyproj.Transformer.from_crs(31468, 4326, always_xy=True)
+#         lon, lat = transformer.transform(x, y)
+#     except Exception:
+#         proj_wgs84 = pyproj.Proj(init="epsg:4326")
+#         proj_gk4 = pyproj.Proj(init="epsg:31468")
+#         lon, lat = pyproj.transform(proj_gk4, proj_wgs84, x, y)
+#     return (lon, lat)
+
+
+def gk2lonlat(x, y, central_lat=0, central_lon=0, m_to_km=True):
     """
-    import pyproj
+    Converts coordinates from Azimuthal Equidistant projection to WGS84.
+
+    Args:
+        x (float): X coordinate in Azimuthal Equidistant projection (meters).
+        y (float): Y coordinate in Azimuthal Equidistant projection (meters).
+        central_lat (float): Latitude of the projection center (degrees).
+        central_lon (float): Longitude of the projection center (degrees).
+
+    Returns:
+        tuple: (longitude, latitude) in WGS84 (degrees).
+    """
+    from pyproj import Transformer, CRS
 
     # convert to meters first
     if m_to_km:
         x = x * 1000.
         y = y * 1000.
-    # pyproj has deprecated the old 'init="epsg:4326"' syntax
-    try:
-        transformer = pyproj.Transformer.from_crs(31468, 4326, always_xy=True)
-        lon, lat = transformer.transform(x, y)
-    except Exception:
-        proj_wgs84 = pyproj.Proj(init="epsg:4326")
-        proj_gk4 = pyproj.Proj(init="epsg:31468")
-        lon, lat = pyproj.transform(proj_gk4, proj_wgs84, x, y)
+
+    aeqd_crs = CRS.from_proj4(f"+proj=aeqd +lat_0={central_lat} +lon_0={central_lon} +datum=WGS84 +units=m")
+    wgs84_crs = CRS.from_epsg(4326)
+    transformer = Transformer.from_crs(aeqd_crs, wgs84_crs, always_xy=True)
+    lon, lat = transformer.transform(x, y)
+    
     return (lon, lat)
 
 
-def readNLLocScatter(scat_filename, textviewStdErrImproved):
+def readNLLocScatter(scat_filename, c_lon, c_lat, textviewStdErrImproved):
     """
     This function reads location and values of pdf scatter samples from the
     specified NLLoc *.scat binary file (type "<f4", 4 header values, then 4
@@ -941,7 +969,7 @@ def readNLLocScatter(scat_filename, textviewStdErrImproved):
     # read data, omit the first 4 values (header information) and reshape
     data = np.fromfile(scat_filename, dtype="<f4").astype("float")[4:]
     data = data.reshape((-1, 4)).swapaxes(0, 1)
-    data[0], data[1] = gk2lonlat(data[0], data[1])
+    data[0], data[1] = gk2lonlat(data[0], data[1], central_lon=c_lon, central_lat=c_lat)
     return data.T
 
 
