@@ -359,9 +359,10 @@ class ObsPyck(QtWidgets.QMainWindow):
             if self.jane_session:
                 self.updateEventListFromJane(self.T0, self.T1)
             else:
-                msg = ("Warning: Jane specific features will not work "
-                       "(e.g. 'send Event').")
-                self.error(msg)
+                # msg = ("Warning: Jane specific features will not work "
+                #        "(e.g. 'send Event').")
+                # self.error(msg)
+                pass
 
             self.setFocusToMatplotlib()
         except:
@@ -1435,8 +1436,8 @@ class ObsPyck(QtWidgets.QMainWindow):
         # make a Stream with the traces that are plotted
         x = 0.01
         y = 0.92
-        bbox = dict(boxstyle="round,pad=0.4", fc="w", ec="k", lw=1.5, alpha=1.0)
-        kwargs = dict(va="top", ha="left", fontsize=18, family='monospace',
+        bbox = dict(boxstyle="round,pad=0.4", fc="w", ec="k", lw=0.75, alpha=1.0)
+        kwargs = dict(va="top", ha="left", fontsize=10, family='monospace',
                       zorder=10000)
         if self.widgets.qToolButton_overview.isChecked():
             for ax, st in zip(self.axs, self.streams):
@@ -1498,7 +1499,10 @@ class ObsPyck(QtWidgets.QMainWindow):
         else:
             ymin = -ymax
         for ax in self.axs:
-            ax.set_ybound(upper=ymax, lower=ymin)
+            if ymax != ymin:
+                ax.set_ybound(upper=ymax, lower=ymin)
+            else:
+                ax.set_ybound(upper=1, lower=-1)
         self.redraw()
 
     def drawAxes(self):
@@ -1598,7 +1602,7 @@ class ObsPyck(QtWidgets.QMainWindow):
         Update plot with current streams data.
         """
         ylims = [list(ax.get_ylim()) for ax in self.axs]
-        self.updateIds("blue")
+        self.updateIds("0.2")
         # Update all plots' y data
         for tr, plot in zip(self.getCurrentStream(), self.plts):
             plot.set_ydata(tr.data)
@@ -1941,7 +1945,7 @@ class ObsPyck(QtWidgets.QMainWindow):
             direction = (self.config.getboolean('misc', 'scrollWheelInvert')
                          and 1 or -1)
             shift = ((right - left) *
-                     self.config.getfloat('misc', 'scrollWheelPercentage'))
+                     self.config.getfloat('misc', 'scrollWheelPercentage')) / 3
             if self.widgets.qToolButton_showMap.isChecked():
                 pass
             else:
@@ -2459,8 +2463,6 @@ class ObsPyck(QtWidgets.QMainWindow):
         y = float(line[4])
         depth = - float(line[6]) # depth: negative down!
 
-        lon, lat = gk2lonlat(x, y)
-
         # goto origin time info line
         try:
             line = lines.pop(0)
@@ -2533,6 +2535,28 @@ class ObsPyck(QtWidgets.QMainWindow):
         errY *= 2
         errZ *= 2
 
+        # goto location transform info line
+        try:
+            line = lines.pop(0)
+            while not line.startswith("TRANSFORM"):
+                line = lines.pop(0)
+        except:
+            err = "Error: No correct transform info found in NLLoc " + \
+                  "outputfile (%s)!" % files['summary']
+            self.error(err)
+            return
+
+        line = line.split()
+        central_lat = float(line[5])
+        central_lon = float(line[7])
+        print(f"Grid transform origin: {central_lon}, {central_lat}\n")
+        lon, lat = gk2lonlat(x, y, central_lat=central_lat, central_lon=central_lon)
+        print("\n==========================\n")
+        print(f"Latitude: {lat:.3f} +/- {errY:.1f} km\n")
+        print(f"Longitude: {lon:3f} +/- {errY:.1f} km\n")
+        print(f"Depth: {depth:.1f} +/- {errZ:.1f} km")
+        print("\n==========================\n")
+        
         # determine which model was used:
         # XXX handling of path extremely hackish! to be improved!!
         dirname = os.path.dirname(files['summary'])
@@ -2754,7 +2778,7 @@ class ObsPyck(QtWidgets.QMainWindow):
         self.update_origin_azimuthal_gap()
 
         # read NLLOC scatter file
-        data = readNLLocScatter(PROGRAMS['nlloc']['files']['scatter'],
+        data = readNLLocScatter(PROGRAMS['nlloc']['files']['scatter'], central_lon, central_lat,
                                 self.widgets.qPlainTextEdit_stderr)
         o.nonlinloc_scatter = data
 
