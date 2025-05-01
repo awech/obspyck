@@ -252,10 +252,15 @@ class ObsPyck(QtWidgets.QMainWindow):
             _cmap_name = self._get_config_value(
                 "base", "spectrogram_colormap",
                 default=mpl.rcParams.get('image.cmap', 'jet'))
-            try:
-                cmap_spectrogram = getattr(obspy_cm, _cmap_name)
-            except AttributeError:
-                cmap_spectrogram = get_cmap(_cmap_name)
+            if "cm_" in _cmap_name:
+                import cmcrameri.cm as cmc
+                c_name = _cmap_name.split("cm_")[-1]
+                cmap_spectrogram = eval(f"cmc.{c_name}")
+            else:
+                try:
+                    cmap_spectrogram = getattr(obspy_cm, _cmap_name)
+                except AttributeError:
+                    cmap_spectrogram = get_cmap(_cmap_name)
             self.spectrogramColormap = cmap_spectrogram
             # indicates which of the available events from jane was loaded
             self.janeEventCurrent = None
@@ -1541,7 +1546,7 @@ class ObsPyck(QtWidgets.QMainWindow):
                 wlen = self.widgets.qDoubleSpinBox_wlen.value()
                 perlap = self.widgets.qDoubleSpinBox_perlap.value()
                 spectrogram(tr.data, tr.stats.sampling_rate, log=log, wlen=wlen, per_lap=perlap,
-                            cmap=self.spectrogramColormap, axes=ax, zorder=-10)
+                            cmap=self.spectrogramColormap, axes=ax, zorder=-10, clip=[0.4, 0.6])
                 textcolor = "red"
                 # adjust spectrogram start time offset, relative to reference time
                 offset = self.T0 - self.TREF
@@ -3474,11 +3479,11 @@ class ObsPyck(QtWidgets.QMainWindow):
             arrival_s = pick_s and getArrivalForPick(o.arrivals, pick_s)
             if ((arrival_p and arrival_p.time_residual is not None) or
                     (arrival_s and arrival_s.time_residual is not None)):
-                stationColor = 'black'
+                stationColor = 'k'
             else:
-                stationColor = 'gray'
+                stationColor = '0.5'
             # plot stations at respective coordinates with names
-            axEM.plot((coords.longitude,), (coords.latitude,), markersize=17,
+            axEM.plot((coords.longitude,), (coords.latitude,), markersize=10,
                       marker='v', ls='', color=(0, 0, 0, 0),
                       markeredgecolor=stationColor)
             axEM.text(coords.longitude, coords.latitude, '  ' + sta,
@@ -3487,12 +3492,13 @@ class ObsPyck(QtWidgets.QMainWindow):
                 if not (pick and arrival):
                     continue
                 if arrival.time_residual is not None:
-                    res_info = '\n' * (_i + 2) + '%+0.3fs' % arrival.time_residual
+                    res_info = '\n' * (_i + 1) + '%+0.3fs' % arrival.time_residual
                     if pick.polarity:
                         res_info += '  %s' % pick.polarity
                     axEM.text(coords.longitude, coords.latitude, res_info,
                               va='top', family='monospace',
-                              color=self.seismic_phases[pick.phase_hint])
+                              color=self.seismic_phases[pick.phase_hint],
+                              fontsize=8)
             for sm in self.catalog[0].station_magnitudes:
                 if sm.waveform_id.station_code != sta:
                     continue
@@ -3566,14 +3572,16 @@ class ObsPyck(QtWidgets.QMainWindow):
                 if depth_:
                     elev_ -= depth_
                 stadepths.append(elev_)
-            axEMiXY.scatter(stalons, stalats, s=200, marker='v', color='k')
-            axEMiXZ.scatter(stalons, stadepths, s=200, marker='v', color='k')
-            axEMiZY.scatter(stadepths, stalats, s=200, marker='v', color='k')
+            axEMiXY.scatter(stalons, stalats, s=20, marker='v', color='0.5', edgecolor="k", linewidth=0.5, alpha=0.5)
+            axEMiXZ.scatter(stalons, stadepths, s=20, marker='v', color='0.5', edgecolor="k", linewidth=0.5, alpha=0.5)
+            axEMiZY.scatter(stadepths, stalats, s=20, marker='v', color='0.5', edgecolor="k", linewidth=0.5, alpha=0.5)
 
-            min_x = min(data[0])
-            max_x = max(data[0])
-            min_y = min(data[1])
-            max_y = max(data[1])
+            # min_x = min(data[0])
+            # max_x = max(data[0])
+            # min_y = min(data[1])
+            # max_y = max(data[1])
+            min_x, max_x = axEM.get_xlim()
+            min_y, max_y = axEM.get_ylim()
             min_z = min(data[2])
             max_z = max(data[2])
             axEMiZY.set_xlim(min_z, max_z)
@@ -3583,9 +3591,20 @@ class ObsPyck(QtWidgets.QMainWindow):
             axEMiXZ.invert_yaxis()
             axEMiZY.invert_xaxis()
 
-            formatter = FormatStrFormatter("%.3f")
+            formatter = FormatStrFormatter("%.2f")
             axEMiXY.xaxis.set_major_formatter(formatter)
             axEMiXY.yaxis.set_major_formatter(formatter)
+            axEMiXY.xaxis.set_major_locator(MaxNLocator(nbins=3))
+            axEMiXY.yaxis.set_major_locator(MaxNLocator(nbins=3))
+            axEMiXY.tick_params(bottom=False, top=True, left=False, right=True,
+                                labelbottom=False, labeltop=True, labelleft=False, labelright=True,
+                                labelsize=6)
+            axEMiXZ.tick_params(bottom=False, top=False, left=False, right=True,
+                                labelbottom=False, labeltop=False, labelleft=False, labelright=True,
+                                labelsize=6)
+            axEMiZY.tick_params(bottom=False, top=True, left=False, right=False,
+                                labelbottom=False, labeltop=True, labelleft=False, labelright=False,
+                                labelsize=6)
 
             # only draw very few ticklabels in our tiny subaxes
             for ax in [axEMiXZ.xaxis, axEMiXZ.yaxis,
@@ -3593,8 +3612,8 @@ class ObsPyck(QtWidgets.QMainWindow):
                 ax.set_major_locator(MaxNLocator(nbins=3))
 
             # hide ticklabels on XY plot
-            for ax in [axEMiXY.xaxis, axEMiXY.yaxis]:
-                plt.setp(ax.get_ticklabels(), visible=False)
+            # for ax in [axEMiXY.xaxis, axEMiXY.yaxis]:
+            #     plt.setp(ax.get_ticklabels(), visible=False)
 
 
     def delEventMap(self):
