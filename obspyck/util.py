@@ -645,6 +645,12 @@ def connect_to_server(server_name, config, clients):
         value = config_getters.get(key, config.get)(server_name, key) or None
         if value is not None:
             kwargs[key] = value
+    try:
+        local_test = config.get(server_name, "local_fdsn")
+        if local_test == "true":
+            kwargs["service_mappings"] = {"dataselect": "http://localhost:8080/fdsnws/dataselect/1"}
+    except:
+        pass
 
     client = client_classes[server_type](**kwargs)
     # ugly workaround to be able to set a custom FMTSTR for SDS clients
