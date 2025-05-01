@@ -2559,7 +2559,8 @@ class ObsPyck(QtWidgets.QMainWindow):
         print("\n==========================\n")
         print(f"Latitude: {lat:.3f} +/- {errY:.1f} km\n")
         print(f"Longitude: {lon:3f} +/- {errX:.1f} km\n")
-        print(f"Depth: {depth:.1f} +/- {errZ:.1f} km")
+        print(f"Depth: {-depth:.1f} +/- {errZ:.1f} km\n")
+        print(f"RMS: {rms:.3f}s")
         print("\n==========================\n")
         
         # determine which model was used:
