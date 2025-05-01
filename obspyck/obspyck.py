@@ -20,7 +20,7 @@ import sys
 import tempfile
 import warnings
 from collections import OrderedDict
-from configparser import SafeConfigParser, NoOptionError, NoSectionError
+from configparser import ConfigParser, NoOptionError, NoSectionError
 
 from PyQt5 import QtCore, QtWidgets, QtGui
 import numpy as np
@@ -2558,7 +2558,7 @@ class ObsPyck(QtWidgets.QMainWindow):
         lon, lat = gk2lonlat(x, y, central_lat=central_lat, central_lon=central_lon)
         print("\n==========================\n")
         print(f"Latitude: {lat:.3f} +/- {errY:.1f} km\n")
-        print(f"Longitude: {lon:3f} +/- {errY:.1f} km\n")
+        print(f"Longitude: {lon:3f} +/- {errX:.1f} km\n")
         print(f"Depth: {depth:.1f} +/- {errZ:.1f} km")
         print("\n==========================\n")
         
@@ -4917,7 +4917,7 @@ def main():
         raise Exception(msg)
     print(f"Running ObsPyck version {__version__} (location: {__file__})")
     print(f"using config file: {config_file}")
-    config = SafeConfigParser(allow_no_value=True)
+    config = ConfigParser(allow_no_value=True)
     # make all config keys case sensitive
     config.optionxform = str
     config.read(config_file)
