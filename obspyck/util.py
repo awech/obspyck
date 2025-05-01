@@ -32,6 +32,7 @@ import obspy
 from obspy import Trace, Inventory
 from obspy import UTCDateTime, read_inventory, read, Stream
 from obspy.clients.fdsn import Client as FDSNClient
+from obspy.clients.earthworm import Client as EWClient
 from obspy.clients.filesystem.sds import Client as SDSClient
 from obspy.clients.seedlink import Client as SeedlinkClient
 from obspy.geodetics.base import gps2dist_azimuth
@@ -457,7 +458,7 @@ def fetch_waveforms_with_metadata(options, args, config):
                    "supported in obspyck anymore (config section "
                    "'{}')").format(server)
             raise NotImplementedError(msg)
-        if server_type not in ("seishub", "fdsn", "jane", "seedlink", "sds"):
+        if server_type not in ("seishub", "fdsn", "earthworm", "jane", "seedlink", "sds"):
             msg = ("Unknown server type '{}' in server definition section "
                    "'{}' in config file.").format(server_type, server)
             raise NotImplementedError(msg)
@@ -491,6 +492,29 @@ def fetch_waveforms_with_metadata(options, args, config):
                     # same source (by putting it in front in list)
                     all_inventories = [inventory] + all_inventories
                     _attach_metadata(st, all_inventories)
+            # Earthworm
+            elif server_type == "earthworm":
+                st = client.get_waveforms(
+                    network=net, station=sta, location=loc, channel=cha,
+                    starttime=t1, endtime=t2, cleanup=True)
+                if not st:
+                    msg = "Server returned no data."
+                    raise Exception(msg)
+                if not no_metadata:
+                    meta_server = config.get(server, "metadata_server")
+                    meta_server_type = config.get(meta_server, "type")
+                    meta_client = connect_to_server(meta_server,
+                                                    config, clients)
+                    if meta_server_type in ('fdsn', 'jane'):
+                        inventory = meta_client.get_stations(
+                            network=net, station=sta, location=loc,
+                            level="response")
+                        # look in all metadata available, but prefer metadata from
+                        # same source (by putting it in front in list)
+                        all_inventories = [inventory] + all_inventories
+                        _attach_metadata(st, all_inventories)
+                    else:
+                        raise NotImplementedError()
             # Seedlink
             elif server_type == "seedlink":
                 # XXX I think the wild card checks for net/sta/loc can be
@@ -577,6 +601,10 @@ def fetch_waveforms_with_metadata(options, args, config):
         if server_type in ("fdsn", "jane"):
             for tr in st:
                 tr.stats['_format'] = "FDSN"
+        # Earthworm
+        elif server_type == "earthworm":
+            for tr in st:
+                tr.stats["_format"] = "earthworm"
         # seedlink
         elif server_type == "seedlink":
             for tr in st:
@@ -611,6 +639,7 @@ def connect_to_server(server_name, config, clients):
 
     client_classes = {
         "fdsn": FDSNClient,
+        "earthworm": EWClient,
         "jane": FDSNClient,
         "seedlink": SeedlinkClient,
         "sds": SDSClient,
@@ -624,6 +653,8 @@ def connect_to_server(server_name, config, clients):
     config_keys = {
         "fdsn": (
             "base_url", "user", "password", "user_agent", "debug", "timeout"),
+        "earthworm": (
+            "host", "port", "timeout"),
         "jane": (
             "base_url", "user", "password", "user_agent", "debug", "timeout"),
         "seedlink": (
