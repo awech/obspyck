@@ -1340,3 +1340,15 @@ def wheel_angle(ev):
     # https://bugreports.qt.io/browse/QTBUG-78550
     angle = ev.angleDelta().x()
     return angle
+
+
+from cartopy.io.img_tiles import GoogleTiles
+class ShadedReliefESRI(GoogleTiles):
+    # shaded relief
+    def _image_url(self, tile):
+        x, y, z = tile
+
+        url = ('https://server.arcgisonline.com/ArcGIS/rest/services/' \
+               'Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}.jpg').format(
+               z=z, y=y, x=x)
+        return url
