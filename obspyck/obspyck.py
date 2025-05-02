@@ -2569,8 +2569,21 @@ class ObsPyck(QtWidgets.QMainWindow):
         controlfile = os.path.join(dirname, "last.in")
         lines2 = open(controlfile, "rt").readlines()
         line2 = lines2.pop()
-        while not line2.startswith("LOCFILES"):
+        try:
+            while not line2.startswith("LOCFILES"):
+                line2 = lines2.pop()
+        except:
+            print("trying the include file")
+            lines2 = open(controlfile, "rt").readlines()
             line2 = lines2.pop()
+            while "NLLoc" not in line2:
+                line2 = lines2.pop()
+            file = line2.split()[-1].split("\\n")[0]
+            file = os.path.join(dirname, file)
+            lines2 = open(file, "rt").readlines()
+            line2 = lines2.pop()
+            while not line2.startswith("LOCFILES"):
+                line2 = lines2.pop()
         line2 = line2.split()
         model = line2[3]
         model = model.split("/")[-1]
@@ -3369,6 +3382,40 @@ class ObsPyck(QtWidgets.QMainWindow):
         self.yMin, self.yMax = axs[0].get_ylim()
         fig.subplots_adjust(bottom=0.001, hspace=0.000, right=0.999, top=0.999, left=0.001)
 
+    def make_extent(self):
+        lons = np.array([])
+        lats = np.array([])
+        
+        for st in self.streams:
+            coords = st[0].stats.coordinates
+            lons = np.append(lons, coords.longitude)
+            lats = np.append(lats, coords.latitude)
+        sta_x_min = lons.min()
+        sta_x_max = lons.max()
+        sta_y_min = lats.min()
+        sta_y_max = lats.max()
+
+        event = self.catalog[0]
+        o = event.origins[0]
+        data = o.get("nonlinloc_scatter")
+        if data is not None:
+            data = data.T
+            data_min_x = min(data[0])
+            data_max_x = max(data[0])
+            data_min_y = min(data[1])
+            data_max_y = max(data[1])
+        else:
+            data_min_x = data_max_x = data_min_y = data_max_y = np.nan
+        x_min = np.nanmin([sta_x_min, data_min_x])
+        x_max = np.nanmax([sta_x_max, data_max_x])
+        y_min = np.nanmin([sta_y_min, data_min_y])
+        y_max = np.nanmax([sta_y_max, data_max_y])
+        
+        dx = 0.02 * (x_max - x_min)
+        dy = 0.02 * (y_max - y_min)
+
+        return (x_min - dx, x_max + dx, y_min - dy, y_max + dy)
+            
     def drawEventMap(self):
         event = self.catalog[0]
         try:
@@ -3380,11 +3427,25 @@ class ObsPyck(QtWidgets.QMainWindow):
         #XXX self.figEventMap.canvas.widgetlock.release(toolbar)
         #self.axEventMap = self.fig.add_subplot(111)
         bbox = mpl.transforms.Bbox.from_extents(0.08, 0.08, 0.92, 0.92)
-        self.axEventMap = self.fig.add_axes(bbox, aspect='equal', adjustable='datalim')
-        axEM = self.axEventMap
+
+        if self.config.getboolean("base", "cartopy"):
+            import cartopy.crs as ccrs
+            from .util import ShadedReliefESRI
+            self.axEventMap = self.fig.add_axes(bbox, aspect="equal", adjustable='datalim', projection=ShadedReliefESRI().crs)
+            axEM = self.axEventMap
+            extent = self.make_extent()
+            axEM.set_extent(extent)
+            axEM.add_image(ShadedReliefESRI(), 11, alpha=1, zorder=-2e3)
+            tform = ccrs.PlateCarree()
+        else:
+            self.axEventMap = self.fig.add_axes(bbox, aspect='equal', adjustable='datalim')
+            axEM = self.axEventMap
+            tform = axEM.transData
+
+        
         #axEM.set_aspect('equal', adjustable="datalim")
         #self.fig.subplots_adjust(bottom=0.07, top=0.95, left=0.07, right=0.98)
-        axEM.scatter([o.longitude], [o.latitude], 30, color='red', marker='o')
+        axEM.scatter([o.longitude], [o.latitude], 30, color='gold', marker='o', edgecolor="k", linewidth=0.5, transform=tform)
         # XXX TODO handle different origin uncertainty descriptions
         #errLon, errLat = util_lon_lat(o.longitude, o.latitude, o.longitude_errors,
         #                              o.latitude_errors)
@@ -3409,13 +3470,16 @@ class ObsPyck(QtWidgets.QMainWindow):
                                               errX / 1e3, errY / 1e3)
                 errLon -= o.longitude
                 errLat -= o.latitude
+                azim = np.atan2(errX, errY) * 180/np.pi
                 if ou.preferred_description == "uncertainty ellipse":
                     errorell = Ellipse(xy=[o.longitude, o.latitude],
                                        width=errLon,
                                        height=errLat,
                                        # we account for angle by setting errX/Y
-                                       #angle=ou.azimuth_max_horizontal_uncertainty,
-                                       fill=False)
+                                       # angle=azim,
+                                       # angle=-ou.azimuth_max_horizontal_uncertainty,
+                                       fill=False,
+                                       transform=tform)
                     axEM.add_artist(errorell)
         m = event.magnitudes and event.magnitudes[0] or None
         try:
@@ -3486,9 +3550,9 @@ class ObsPyck(QtWidgets.QMainWindow):
             # plot stations at respective coordinates with names
             axEM.plot((coords.longitude,), (coords.latitude,), markersize=10,
                       marker='v', ls='', color=(0, 0, 0, 0),
-                      markeredgecolor=stationColor)
+                      markeredgecolor=stationColor, transform=tform)
             axEM.text(coords.longitude, coords.latitude, '  ' + sta,
-                      color=stationColor, va='top', family='monospace')
+                      color=stationColor, va='top', family='monospace', transform=tform)
             for _i, (pick, arrival) in enumerate([[pick_p, arrival_p], [pick_s, arrival_s]]):
                 if not (pick and arrival):
                     continue
@@ -3499,7 +3563,7 @@ class ObsPyck(QtWidgets.QMainWindow):
                     axEM.text(coords.longitude, coords.latitude, res_info,
                               va='top', family='monospace',
                               color=self.seismic_phases[pick.phase_hint],
-                              fontsize=8)
+                              fontsize=8, transform=tform)
             for sm in self.catalog[0].station_magnitudes:
                 if sm.waveform_id.station_code != sta:
                     continue
@@ -3521,7 +3585,7 @@ class ObsPyck(QtWidgets.QMainWindow):
         if len(self.scatterMagLon) > 0:
             self.scatterMag = axEM.scatter(self.scatterMagLon,
                     self.scatterMagLat, s=150, marker='v', color=(0, 0, 0, 0),
-                    edgecolor='black', picker=10)
+                    edgecolor='black', picker=10, transform=tform)
 
         axEM.set_xlabel('Longitude')
         axEM.set_ylabel('Latitude')
@@ -3546,7 +3610,7 @@ class ObsPyck(QtWidgets.QMainWindow):
         if data is not None:
             data = data.T
             cmap = mpl.cm.gist_heat_r
-            axEM.hexbin(data[0], data[1], cmap=cmap, zorder=-1000)
+            axEM.hexbin(data[0], data[1], cmap=cmap, mincnt=1, zorder=-1000, transform=tform, alpha=0.75)
 
             self.axEventMapInletXY = self.fig.add_axes([0.8, 0.8, 0.16, 0.16])
             axEMiXY = self.axEventMapInletXY
@@ -3581,10 +3645,14 @@ class ObsPyck(QtWidgets.QMainWindow):
             # max_x = max(data[0])
             # min_y = min(data[1])
             # max_y = max(data[1])
-            min_x, max_x = axEM.get_xlim()
-            min_y, max_y = axEM.get_ylim()
             min_z = min(data[2])
             max_z = max(data[2])
+            if self.config.getboolean("base", "cartopy"):
+                min_x, max_x, min_y, max_y = extent
+            else:
+                min_x, max_x = axEM.get_xlim()
+                min_y, max_y = axEM.get_ylim()
+
             axEMiZY.set_xlim(min_z, max_z)
             axEMiXZ.set_ylim(min_z, max_z)
             axEMiXY.set_xlim(min_x, max_x)
@@ -3610,11 +3678,7 @@ class ObsPyck(QtWidgets.QMainWindow):
             # only draw very few ticklabels in our tiny subaxes
             for ax in [axEMiXZ.xaxis, axEMiXZ.yaxis,
                        axEMiZY.xaxis, axEMiZY.yaxis]:
-                ax.set_major_locator(MaxNLocator(nbins=3))
-
-            # hide ticklabels on XY plot
-            # for ax in [axEMiXY.xaxis, axEMiXY.yaxis]:
-            #     plt.setp(ax.get_ticklabels(), visible=False)
+                ax.set_major_locator(MaxNLocator(nbins=3))    
 
 
     def delEventMap(self):
