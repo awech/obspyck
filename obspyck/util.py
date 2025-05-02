@@ -845,8 +845,8 @@ def setup_external_programs(options, config):
         prog_dict['files'] = {}
         for key, filename in prog_dict['filenames'].items():
             prog_dict['files'][key] = os.path.join(prog_tmpdir, filename)
-        prog_dict['files']['exe'] = "__".join(\
-                [prog_dict['filenames']['exe'], system, architecture])
+        # prog_dict['files']['exe'] = "__".join(\
+        #         [prog_dict['filenames']['exe'], system, architecture])
         # setup clean environment
         prog_dict['env'] = {}
         prog_dict['env']['PATH'] = prog_dict['dir'] + os.pathsep + env['PATH']
