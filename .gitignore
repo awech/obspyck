@@ -1,3 +1,4 @@
 /obspyck.egg-info/*
 /build/*
 /dist/*
+obspyck/__pycache__/
